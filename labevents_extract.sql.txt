@@ -1,0 +1,32 @@
+
+CREATE TEMP TABLE ED_stays AS 
+  SELECT 
+    stay_id,
+    subject_id,
+    cast(min(case when activity = 'Enter the ED' then timestamps end) as DATETIME) as Enter_time,
+    cast(max(case when activity = 'Discharge from the ED' then timestamps end) as DATETIME) as Discharge_time  
+  FROM `mimicel-extension.mimicel.mimicel_filtered`
+  group by 
+    stay_id,
+    subject_id;
+
+CREATE TEMP TABLE ED_lab_events AS 
+SELECT 
+  b.stay_id, 
+  b.subject_id,
+  a.specimen_id,
+  cast(a.storetime as TIMESTAMP) as storetime,
+  a.itemid,
+  a.value,
+  a.valueuom,
+  a.ref_range_lower,
+  a.ref_range_upper,
+  a.flag
+from `physionet-data.mimiciv_hosp.labevents` a
+join ED_stays b on a.subject_id = b.subject_id
+AND a.storetime > b.Enter_time
+AND a.storetime < b.Discharge_time
+WHERE value is not NULL;
+
+SELECT * from ED_lab_events;
+SELECT count(distinct stay_id), count(*) from ED_lab_events;
